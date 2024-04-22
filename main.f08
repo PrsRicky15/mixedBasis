@@ -56,7 +56,7 @@ subroutine check_dot_product(n, avec, bvec)
 end subroutine check_dot_product
 
 subroutine vector_operation_check(ngrid, avec, bvec)
-    use VectorOperations
+    use Vector_operation_BLAS
     implicit none
 
     integer(kind=4), intent(in) :: ngrid
@@ -78,7 +78,7 @@ subroutine vector_operation_check(ngrid, avec, bvec)
     print *, "Vector Subtraction Result:", result_vec%real_elements
     
     ! Compute the dot product of two vectors
-    call vec1%dotProduct(vec2, dot_result)
+    call vec1%dotProductPre(vec2, dot_result)
     print *, "Dot Product Result:", dot_result
 
     ! Compute the magnitude of a vector

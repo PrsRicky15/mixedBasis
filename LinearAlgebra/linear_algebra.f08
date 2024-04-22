@@ -8,6 +8,20 @@
 module Vector_operation_BLAS
     implicit none
 
+    ! Define a type for a vector
+    type :: Vector
+        integer(kind=4), allocatable :: int_elements(:)
+        real(kind=8), allocatable :: real_elements(:)
+        complex(kind=8), allocatable :: complex_elements(:)
+        integer(kind=4) :: size
+    contains
+        procedure :: initialize
+        procedure :: add
+        procedure :: subtract
+        procedure :: dotProductPre
+        procedure :: magnitude
+    end type Vector
+
     interface dotProduct
         procedure RealdotProduct
         procedure ComplexdotProduct
@@ -58,7 +72,76 @@ module Vector_operation_BLAS
     
 contains
 
-! Dot product of two different vector
+    ! Method to initialize a vector with given size and values
+    subroutine initialize(this, size, values)
+        class(Vector) :: this
+        integer(kind=4), intent(in) :: size
+        real(kind=8), dimension(size), intent(in) :: values
+        allocate(this%real_elements(size))
+        this%real_elements = values
+        this%size = size
+    end subroutine initialize
+
+    ! Method to add two vectors
+    subroutine add(this, other, result)
+        class(Vector) :: this, other, result
+        integer(kind=4) :: i
+
+        if (this%size /= other%size) then
+            print *, "Error: Vectors must have the same size for addition"
+            return
+        endif
+
+        allocate(result%real_elements(this%size))
+
+        do i = 1, this%size
+            result%real_elements(i) = this%real_elements(i) + other%real_elements(i)
+        end do
+        result%size = this%size
+    end subroutine add
+
+    ! Method to subtract one vector from another
+    subroutine subtract(this, other, result)
+        class(Vector) :: this, other, result
+
+        if (this%size /= other%size) then
+            print *, "Error: Vectors must have the same size for subtraction"
+            return
+        endif
+        result%real_elements = this%real_elements - other%real_elements
+        result%size = this%size
+    end subroutine subtract
+
+    ! Method to compute the dot product of two vectors
+    subroutine dotProductPre(this, other, result)
+        class(Vector) :: this, other
+        real(kind=8) :: result
+        integer(kind=4) :: i
+
+        if (this%size /= other%size) then
+            print *, "Error: Vectors must have the same size for dot product"
+            return
+        endif
+
+        result = 0.0d0
+        do i = 1, this%size
+            result = result + this%real_elements(i) * other%real_elements(i)
+        end do
+    end subroutine dotProductPre
+
+    ! Method to compute the magnitude of a vector
+    real(kind=8) function magnitude(this)
+        class(Vector) :: this
+        integer(kind=8) :: i
+
+        magnitude = 0.0d0
+        do i = 1, this%size
+            magnitude = magnitude + this%real_elements(i)**2
+        end do
+        magnitude = sqrt(magnitude)
+    end function magnitude
+
+    ! Dot product of two different vector
 ! Real(kind=8)
 ! integer(kind=4)
 ! integer(kind=8)
@@ -115,7 +198,6 @@ contains
 ! Real(kind=8)
 ! integer(kind=8)
 ! complex(kind=8)
-    
     subroutine Integer_VectorAdd(n, vec1, vec2, alpha)
     implicit none
         integer(kind=4), intent(in) :: n
@@ -187,101 +269,6 @@ contains
     end subroutine Complex_Matrix_Vector_Mult
 
 end module Vector_operation_BLAS
-
-!- Module for the vector operation
-!- add
-!- subtract
-!- dotProduct
-!- magnitude
-module VectorOperations
-    implicit none
-    
-    ! Define a type for a vector
-    type :: Vector
-        integer(kind=4), allocatable :: int_elements(:)
-        real(kind=8), allocatable :: real_elements(:)
-        complex(kind=8), allocatable :: complex_elements(:)
-        integer(kind=4) :: size
-    contains
-        procedure :: initialize
-        procedure :: add
-        procedure :: subtract
-        procedure :: dotProduct
-        procedure :: magnitude
-    end type Vector
-
-contains     
-
-    ! Method to initialize a vector with given size and values
-    subroutine initialize(this, size, values)
-    class(Vector) :: this
-    integer(kind=4), intent(in) :: size
-        real(kind=8), dimension(size), intent(in) :: values
-        allocate(this%real_elements(size))
-        this%real_elements = values
-        this%size = size
-    end subroutine initialize
-
-    ! Method to add two vectors
-    subroutine add(this, other, result)
-        class(Vector) :: this, other, result
-        integer(kind=4) :: i
-        
-        if (this%size /= other%size) then
-            print *, "Error: Vectors must have the same size for addition"
-            return
-        endif
-        
-        allocate(result%real_elements(this%size))
-        
-        do i = 1, this%size
-            result%real_elements(i) = this%real_elements(i) + other%real_elements(i)
-        end do
-        result%size = this%size
-    end subroutine add
-
-    ! Method to subtract one vector from another
-    subroutine subtract(this, other, result)
-        class(Vector) :: this, other, result
-        
-        if (this%size /= other%size) then
-            print *, "Error: Vectors must have the same size for subtraction"
-            return
-        endif
-        result%real_elements = this%real_elements - other%real_elements
-        result%size = this%size
-    end subroutine subtract
-
-    ! Method to compute the dot product of two vectors
-    subroutine dotProduct(this, other, result)
-        class(Vector) :: this, other
-        real(kind=8) :: result
-        integer(kind=4) :: i
-        
-        if (this%size /= other%size) then
-            print *, "Error: Vectors must have the same size for dot product"
-            return
-        endif
-        
-        result = 0.0d0
-        do i = 1, this%size
-            result = result + this%real_elements(i) * other%real_elements(i)
-        end do
-    end subroutine dotProduct
-
-    ! Method to compute the magnitude of a vector
-    real(kind=8) function magnitude(this)
-        class(Vector) :: this
-        integer(kind=8) :: i
-        
-        magnitude = 0.0d0
-        do i = 1, this%size
-            magnitude = magnitude + this%real_elements(i)**2
-        end do
-        magnitude = sqrt(magnitude)
-    end function magnitude
-
-end module VectorOperations
 
 !- Module for the Matrix Algebra
 !- Matrix Inverse
@@ -520,7 +507,7 @@ module MatrixOperations
     SUBROUTINE real_Hermitian_diagonalization(this, eval)
         implicit none
         class(Matrix) :: this
-        real*8, intent(inout) :: eval(this%rows)
+        real(kind=8), intent(inout) :: eval(this%rows)
         CHARACTER (LEN = 1), PARAMETER  :: JOBZ="V"
         CHARACTER (LEN = 1), PARAMETER  :: UPLO="L"
         REAL    (KIND = 8), ALLOCATABLE :: WORK(:)
@@ -543,11 +530,11 @@ module MatrixOperations
     subroutine complex_Hermitian_diagonalization(this, eval)
         implicit none
         class(Matrix) :: this
-        real*8, intent(inout) :: eval(this%rows)
+        real(kind=8), intent(inout) :: eval(this%rows)
         character*1, parameter :: jobz = 'V', uplo = 'U'        
-        real*8, allocatable     :: w(:), rwork(:)
-        complex*16, allocatable :: work(:)
-        integer*4   :: num, lda, lwork, info
+        real(kind=8), allocatable     :: w(:), rwork(:)
+        complex(kind=8), allocatable :: work(:)
+        integer(kind=4)   :: num, lda, lwork, info
         
         lda = num
         lwork = max(1,2*num-1)
@@ -620,10 +607,10 @@ module MatrixOperations
     subroutine linear_equation_real_matrix(this, bmat, ncol)
         implicit none
         class(Matrix) :: this
-        integer*4, intent(in) :: ncol
-        real*8, intent(inout) :: bmat(this%rows, ncol)
-        integer*4, allocatable :: ipiv(:)
-        integer*4 :: lda, ldb, lwork, info
+        integer(kind=4), intent(in) :: ncol
+        real(kind=8), intent(inout) :: bmat(this%rows, ncol)
+        integer(kind=4), allocatable :: ipiv(:)
+        integer(kind=4) :: lda, ldb, lwork, info
         
         lda = max(1, this%rows)
         ldb = max(1, this%rows)
@@ -740,14 +727,14 @@ implicit none
         incy = increment_index
         Itemp = 0
         res = 0
-        IF (n.LE.0) RETURN
-        IF (incx.EQ.1 .AND. incy.EQ.1) THEN
+        IF (n <= 0) RETURN
+        IF (incx == 1 .AND. incy == 1) THEN
             m = mod(n,5)
-            IF (m.NE.0) THEN
+            IF (m /= 0) THEN
                 DO i = 1,m
-                    Itemp = Itemp + vec1(i)*vec2(i)
+                    Itemp = Itemp + vec1(i) * vec2(i)
                 END DO
-                IF (n.LT.5) THEN
+                IF (n < 5) THEN
                     res = Itemp
                 RETURN
                 END IF
@@ -761,8 +748,8 @@ implicit none
         else
             ix = 1
             iy = 1
-            IF (incx.LT.0) ix = (-n+1)*incx + 1
-            IF (incy.LT.0) iy = (-n+1)*incy + 1
+            IF (incx < 0) ix = (-n+1)*incx + 1
+            IF (incy < 0) iy = (-n+1)*incy + 1
             DO i = 1, n
                 Itemp = Itemp + vec1(ix)*vec2(iy)
                 ix = ix + incx
@@ -782,14 +769,14 @@ implicit none
         incx = increment_index; incy = increment_index
         stemp = 0
         res = 0
-        IF (n.LE.0) RETURN
-        IF (incx.EQ.1 .AND. incy.EQ.1) THEN
+        IF (n <= 0) RETURN
+        IF (incx == 1 .AND. incy == 1) THEN
             m = mod(n,5)
-            IF (m.NE.0) THEN
+            IF (m /= 0) THEN
                 DO i = 1,m
                     stemp = stemp + vec1(i)*vec2(i)
                 END DO
-                IF (n.LT.5) THEN
+                IF (n < 5) THEN
                     res = stemp
                 RETURN
                 END IF
@@ -803,8 +790,8 @@ implicit none
         else
             ix = 1
             iy = 1
-            IF (incx.LT.0) ix = (-n+1)*incx + 1
-            IF (incy.LT.0) iy = (-n+1)*incy + 1
+            IF (incx < 0) ix = (-n+1)*incx + 1
+            IF (incy < 0) iy = (-n+1)*incy + 1
             DO i = 1,n
                 stemp = stemp + vec1(ix)*vec2(iy)
                 ix = ix + incx
@@ -820,14 +807,14 @@ implicit none
           INTEGER(kind=4) ::  INCX
           INTEGER(kind=4) :: I, M, MP1, NINCX
           INTRINSIC MOD
-          IF (N.LE.0 .OR. INCX.LE.0 .OR. alpha .EQ. 1) RETURN
-          IF (INCX.EQ.1) THEN
+          IF (N <= 0 .OR. INCX <= 0 .OR. alpha == 1) RETURN
+          IF (INCX==1) THEN
              M = MOD(N,5)
-             IF (M.NE.0) THEN
+             IF (M /= 0) THEN
                 DO I = 1,M
                    Vec(I) = alpha * Vec(I)
                 END DO
-                IF (N.LT.5) RETURN
+                IF (N < 5) RETURN
              END IF
              MP1 = M + 1
              DO I = MP1,N,5
