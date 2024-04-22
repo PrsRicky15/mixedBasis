@@ -833,3 +833,9 @@ implicit none
           RETURN
         end procedure Integer_ScaleVector
 end submodule Integer_vector
+
+! A fortran module for Fourier transform of the Real and complex vector
+! 1, 2, 3-Dimensional vector
+module FastFourierTransform
+
+end module FastFourierTransform
