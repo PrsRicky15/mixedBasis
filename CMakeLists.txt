@@ -27,9 +27,12 @@ endif()
 
 set_source_files_properties(main.f08 PROPERTIES LANGUAGE Fortran)
 set_source_files_properties(LinearAlgebra/linear_algebra.f08 PROPERTIES LANGUAGE Fortran)
+set_source_files_properties(LinearAlgebra/algebra_implementation.f08 PROPERTIES LANGUAGE Fortran)
 set_source_files_properties(TDcalc/image_time_prop.f08 PROPERTIES LANGUAGE Fortran)
 
 add_executable(mixedBasis main.f08
                 LinearAlgebra/linear_algebra.f08
+                LinearAlgebra/algebra_implementation.f08
                 TDcalc/image_time_prop.f08)
+
 target_link_libraries(mixedBasis PUBLIC ${math_library})

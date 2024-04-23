@@ -7,9 +7,9 @@
 !  - Matrix vector multiplication
 module Vector_operation_BLAS
     implicit none
-
+    private
     ! Define a type for a vector
-    type :: Vector
+    type, public :: Vector
         integer(kind=4), allocatable :: int_elements(:)
         real(kind=8), allocatable :: real_elements(:)
         complex(kind=8), allocatable :: complex_elements(:)
@@ -22,39 +22,71 @@ module Vector_operation_BLAS
         procedure :: magnitude
     end type Vector
 
+    interface
+        ! Initialize the vector
+        module subroutine initialize(this, size, values)
+            implicit none
+            class(Vector) :: this
+            integer(kind=4), intent(in) :: size
+            real(kind=8), dimension(size), intent(in) :: values
+        end subroutine initialize
+        ! Add two vectors
+        module subroutine add(this, other, result)
+            implicit none
+            class(Vector), intent(in) :: this, other
+            class(Vector), intent(out) :: result
+        end subroutine add
+        ! Subtract one vector from another
+        module subroutine subtract(this, other, result)
+            implicit none
+            class(Vector), intent(in) :: this, other
+            class(Vector), intent(out) :: result
+        end subroutine subtract
+        ! Dot product of two vectors
+        module subroutine dotProductPre(this, other, result)
+            implicit none
+            class(Vector), intent(in) :: this, other
+            real(kind=8), intent(out) :: result
+        end subroutine dotProductPre
+        ! Magnitude of a vector
+        module real(kind=8) function magnitude(this)
+            implicit none
+            class(Vector) :: this
+        end function magnitude
+    end interface
+
+    public :: dotProduct
     interface dotProduct
         procedure RealdotProduct
         procedure ComplexdotProduct
-        
         module integer(kind=4) function IntegerdotProduct(n, vec1, vec2, increment_index) result(res)
+            implicit none
             integer(kind=4), intent(in) :: n, increment_index
             integer(kind=4), intent(in) :: vec1(n)
             integer(kind=4), intent(in) :: vec2(n)
         end function IntegerdotProduct
-    
         module integer(kind=8) function IntegerdotProduct2(n, vec1, vec2, increment_index) result(res)
+            implicit none
             integer(kind=4), intent(in) :: n, increment_index
             integer(kind=8), intent(in) :: vec1(n)
             integer(kind=8), intent(in) :: vec2(n)
         end function IntegerdotProduct2
-
     end interface dotProduct
 
+    public :: ScaleVector
     interface ScaleVector
-
         procedure Real_ScaleVector
         procedure Real_Scale_Complex_Vector
         procedure complex_Scale_Complex_Vector
-
         module subroutine Integer_ScaleVector(n, Vec, alpha)
             implicit none
                 integer(kind=4), intent(in) :: n
                 integer(kind=8), intent(in) :: alpha
                 integer(kind=8), intent(inout) :: Vec(n)
         end subroutine Integer_ScaleVector
-
     end interface ScaleVector
 
+    public :: Vector_Add_with_ConstVal
     interface Vector_Add_with_ConstVal
         procedure Real_VectorAdd
         procedure Real_VectorAdd2
@@ -64,6 +96,7 @@ module Vector_operation_BLAS
         procedure Complex_VectorAdd2
     end interface Vector_Add_with_ConstVal
 
+    public :: MatVecMul
     interface MatVecMul
         procedure Real_Matrix_Vector_Mult
         procedure Integer_Matrix_Vector_Mult
@@ -72,80 +105,9 @@ module Vector_operation_BLAS
     
 contains
 
-    ! Method to initialize a vector with given size and values
-    subroutine initialize(this, size, values)
-        class(Vector) :: this
-        integer(kind=4), intent(in) :: size
-        real(kind=8), dimension(size), intent(in) :: values
-        allocate(this%real_elements(size))
-        this%real_elements = values
-        this%size = size
-    end subroutine initialize
-
-    ! Method to add two vectors
-    subroutine add(this, other, result)
-        class(Vector) :: this, other, result
-        integer(kind=4) :: i
-
-        if (this%size /= other%size) then
-            print *, "Error: Vectors must have the same size for addition"
-            return
-        endif
-
-        allocate(result%real_elements(this%size))
-
-        do i = 1, this%size
-            result%real_elements(i) = this%real_elements(i) + other%real_elements(i)
-        end do
-        result%size = this%size
-    end subroutine add
-
-    ! Method to subtract one vector from another
-    subroutine subtract(this, other, result)
-        class(Vector) :: this, other, result
-
-        if (this%size /= other%size) then
-            print *, "Error: Vectors must have the same size for subtraction"
-            return
-        endif
-        result%real_elements = this%real_elements - other%real_elements
-        result%size = this%size
-    end subroutine subtract
-
-    ! Method to compute the dot product of two vectors
-    subroutine dotProductPre(this, other, result)
-        class(Vector) :: this, other
-        real(kind=8) :: result
-        integer(kind=4) :: i
-
-        if (this%size /= other%size) then
-            print *, "Error: Vectors must have the same size for dot product"
-            return
-        endif
-
-        result = 0.0d0
-        do i = 1, this%size
-            result = result + this%real_elements(i) * other%real_elements(i)
-        end do
-    end subroutine dotProductPre
-
-    ! Method to compute the magnitude of a vector
-    real(kind=8) function magnitude(this)
-        class(Vector) :: this
-        integer(kind=8) :: i
-
-        magnitude = 0.0d0
-        do i = 1, this%size
-            magnitude = magnitude + this%real_elements(i)**2
-        end do
-        magnitude = sqrt(magnitude)
-    end function magnitude
-
-    ! Dot product of two different vector
-! Real(kind=8)
-! integer(kind=4)
-! integer(kind=8)
-! complex(kind=8)
+! Dot product of two different vector
+! Real(kind=8), integer(kind=4)
+! integer(kind=8), complex(kind=8)
     real(kind=8) function RealdotProduct(n, vec1, vec2, increment_index) result(res)
     implicit none 
         integer(kind=4), intent(in) :: n, increment_index
@@ -175,7 +137,6 @@ contains
         real(kind=8), intent(inout) :: Vec(n)    
         call dscal(n, alpha, Vec, 1)
     end subroutine Real_ScaleVector
-    
     ! complex double precision vector Scaled with real constant
     subroutine Real_Scale_Complex_Vector(n, Vec, alpha)
     implicit none
@@ -184,7 +145,6 @@ contains
         integer(kind=8), intent(inout) :: Vec(n)
         call zdscal(n, alpha, Vec, 1)    
     end subroutine Real_Scale_Complex_Vector
-
     ! complex double precision vector Scaled with complex constant
     subroutine complex_Scale_Complex_Vector(n, Vec, alpha)
     implicit none
@@ -715,127 +675,14 @@ module MatrixOperations
     end subroutine real_geneign_sym_
 end module MatrixOperations
 
-submodule (Vector_operation_BLAS) Integer_vector
-implicit none
-    contains
-    module procedure IntegerdotProduct
-        INTEGER(kind=4) :: incx, incy, i, ix, iy, m, mp1
-        integer(kind=4) :: Itemp
-        INTRINSIC mod
-
-        incx = increment_index
-        incy = increment_index
-        Itemp = 0
-        res = 0
-        IF (n <= 0) RETURN
-        IF (incx == 1 .AND. incy == 1) THEN
-            m = mod(n,5)
-            IF (m /= 0) THEN
-                DO i = 1,m
-                    Itemp = Itemp + vec1(i) * vec2(i)
-                END DO
-                IF (n < 5) THEN
-                    res = Itemp
-                RETURN
-                END IF
-            END IF
-            
-            mp1 = m + 1
-            DO i = mp1, n, 5
-                Itemp = Itemp + vec1(i)*vec2(i) + vec1(i+1)*vec2(i+1) + &
-                        vec1(i+2)*vec2(i+2) + vec1(i+3)*vec2(i+3) + vec1(i+4)*vec2(i+4)
-            END DO
-        else
-            ix = 1
-            iy = 1
-            IF (incx < 0) ix = (-n+1)*incx + 1
-            IF (incy < 0) iy = (-n+1)*incy + 1
-            DO i = 1, n
-                Itemp = Itemp + vec1(ix)*vec2(iy)
-                ix = ix + incx
-                iy = iy + incy
-            END DO
-        END IF
-            res = Itemp
-        return
-    end procedure IntegerdotProduct
-
-    module procedure IntegerdotProduct2
-    implicit none
-        INTEGER(kind=4) :: incx, incy, i, ix, iy, m, mp1
-        integer(kind=8) :: stemp
-        INTRINSIC mod
-
-        incx = increment_index; incy = increment_index
-        stemp = 0
-        res = 0
-        IF (n <= 0) RETURN
-        IF (incx == 1 .AND. incy == 1) THEN
-            m = mod(n,5)
-            IF (m /= 0) THEN
-                DO i = 1,m
-                    stemp = stemp + vec1(i)*vec2(i)
-                END DO
-                IF (n < 5) THEN
-                    res = stemp
-                RETURN
-                END IF
-            END IF
-            
-            mp1 = m + 1
-            DO i = mp1, n, 5
-                stemp = stemp + vec1(i)*vec2(i) + vec1(i+1)*vec2(i+1) + &
-                        vec1(i+2)*vec2(i+2) + vec1(i+3)*vec2(i+3) + vec1(i+4)*vec2(i+4)
-            END DO
-        else
-            ix = 1
-            iy = 1
-            IF (incx < 0) ix = (-n+1)*incx + 1
-            IF (incy < 0) iy = (-n+1)*incy + 1
-            DO i = 1,n
-                stemp = stemp + vec1(ix)*vec2(iy)
-                ix = ix + incx
-                iy = iy + incy
-            END DO
-        END IF
-            res = stemp
-        return
-    end procedure IntegerdotProduct2
-
-    module procedure Integer_ScaleVector
-        implicit none
-          INTEGER(kind=4) ::  INCX
-          INTEGER(kind=4) :: I, M, MP1, NINCX
-          INTRINSIC MOD
-          IF (N <= 0 .OR. INCX <= 0 .OR. alpha == 1) RETURN
-          IF (INCX==1) THEN
-             M = MOD(N,5)
-             IF (M /= 0) THEN
-                DO I = 1,M
-                   Vec(I) = alpha * Vec(I)
-                END DO
-                IF (N < 5) RETURN
-             END IF
-             MP1 = M + 1
-             DO I = MP1,N,5
-                Vec(I) = alpha * Vec(I)
-                Vec(I+1) = alpha * Vec(I+1)
-                Vec(I+2) = alpha * Vec(I+2)
-                Vec(I+3) = alpha * Vec(I+3)
-                Vec(I+4) = alpha * Vec(I+4)
-             END DO
-          ELSE
-             NINCX = N*INCX
-             DO I = 1,NINCX,INCX
-                Vec(I) = alpha * Vec(I)
-             END DO
-          END IF
-          RETURN
-        end procedure Integer_ScaleVector
-end submodule Integer_vector
-
 ! A fortran module for Fourier transform of the Real and complex vector
 ! 1, 2, 3-Dimensional vector
 module FastFourierTransform
+    implicit none
+    private
+
+    type, abstract :: showable
+
+    end type showable
 
 end module FastFourierTransform

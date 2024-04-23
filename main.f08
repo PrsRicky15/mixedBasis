@@ -72,6 +72,7 @@ subroutine vector_operation_check(ngrid, avec, bvec)
     ! Add two vectors
     call vec1%add(vec2, result_vec)
     print *, "Vector Addition Result:", result_vec%real_elements
+    deallocate(result_vec%real_elements)
     
     ! Subtract one vector from another
     call vec1%subtract(vec2, result_vec)
