@@ -55,6 +55,14 @@ module Vector_operation_BLAS
         end function magnitude
     end interface
 
+    ! Copy Vector to another vector using blas library
+    public :: CopyVector
+    interface CopyVector
+        procedure RealCopyVector
+        procedure ComplexCopyVector
+    end interface CopyVector
+
+    ! Dot product of two Vectors using blas library
     public :: dotProduct
     interface dotProduct
         procedure RealdotProduct
@@ -73,25 +81,20 @@ module Vector_operation_BLAS
         end function IntegerdotProduct2
     end interface dotProduct
 
+    ! Scale the real and complex with a constant Vectors using blas library
     public :: ScaleVector
     interface ScaleVector
         procedure Real_ScaleVector
         procedure Real_Scale_Complex_Vector
         procedure complex_Scale_Complex_Vector
-        module subroutine Integer_ScaleVector(n, Vec, alpha)
-            implicit none
-                integer(kind=4), intent(in) :: n
-                integer(kind=8), intent(in) :: alpha
-                integer(kind=8), intent(inout) :: Vec(n)
-        end subroutine Integer_ScaleVector
     end interface ScaleVector
 
     public :: Vector_Add_with_ConstVal
     interface Vector_Add_with_ConstVal
-        procedure Real_VectorAdd
-        procedure Real_VectorAdd2
         procedure Integer_VectorAdd
         procedure Integer_VectorAdd2
+        procedure Real_VectorAdd
+        procedure Real_VectorAdd2
         procedure Complex_VectorAdd
         procedure Complex_VectorAdd2
     end interface Vector_Add_with_ConstVal
