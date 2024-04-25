@@ -1,7 +1,6 @@
 submodule (Vector_operation_BLAS) Integer_vector
     implicit none
 contains
-
     ! The Vector is initialized by the Type
     ! Method to initialize a vector with given size and values
     module procedure initialize
@@ -60,6 +59,7 @@ contains
     end procedure magnitude
 
     module procedure IntegerdotProduct
+        implicit none
         INTEGER(kind=4) :: incx, incy, i, ix, iy, m, mp1
         integer(kind=4) :: Itemp
         INTRINSIC mod
@@ -173,4 +173,13 @@ contains
         END IF
         RETURN
     end procedure Integer_ScaleVector
+
+    module procedure Real_Matrix_Vector_Mult
+        implicit none
+    end procedure Real_Matrix_Vector_Mult
+
+    module procedure complex_Matrix_Vector_Mult
+        implicit none
+    end procedure complex_Matrix_Vector_Mult
+
 end submodule Integer_vector

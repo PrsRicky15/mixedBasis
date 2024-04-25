@@ -20,6 +20,8 @@ module Vector_operation_BLAS
         procedure :: subtract
         procedure :: dotProductPre
         procedure :: magnitude
+        final :: Deallocate_memory
+        procedure :: Reset_memory
     end type Vector
 
     interface
@@ -58,6 +60,7 @@ module Vector_operation_BLAS
     ! Copy Vector to another vector using blas library
     public :: CopyVector
     interface CopyVector
+        procedure IntegerCopyVector
         procedure RealCopyVector
         procedure ComplexCopyVector
     end interface CopyVector
@@ -81,9 +84,22 @@ module Vector_operation_BLAS
         end function IntegerdotProduct2
     end interface dotProduct
 
+    public :: VecNorm
+    interface VecNorm
+        procedure Euclidean_Real_Vector_Norm
+        procedure Euclidean_Complex_Vector_Norm
+    end interface VecNorm
+
     ! Scale the real and complex with a constant Vectors using blas library
     public :: ScaleVector
     interface ScaleVector
+        ! integer scale vector with a constant [integer(kind=8)]
+        module subroutine Integer_ScaleVector(n, Vec, alpha)
+            implicit none
+            integer(kind=4), intent(in) :: n
+            integer(kind=8), intent(in) :: alpha
+            integer(kind=8), intent(inout) :: Vec(n)
+        end subroutine Integer_ScaleVector
         procedure Real_ScaleVector
         procedure Real_Scale_Complex_Vector
         procedure complex_Scale_Complex_Vector
@@ -91,8 +107,6 @@ module Vector_operation_BLAS
 
     public :: Vector_Add_with_ConstVal
     interface Vector_Add_with_ConstVal
-        procedure Integer_VectorAdd
-        procedure Integer_VectorAdd2
         procedure Real_VectorAdd
         procedure Real_VectorAdd2
         procedure Complex_VectorAdd
@@ -101,35 +115,139 @@ module Vector_operation_BLAS
 
     public :: MatVecMul
     interface MatVecMul
-        procedure Real_Matrix_Vector_Mult
-        procedure Integer_Matrix_Vector_Mult
-        procedure Complex_Matrix_Vector_Mult
+        module subroutine Integer_Matrix_Vector_Mult(n, mat, m, vec, res, Type)
+            implicit none
+            character(len=1), intent(in) :: type
+            integer(kind=4), intent(in) :: n, m
+            integer(kind=8), intent(in) :: mat(m, n), vec(m)
+            integer(kind=8), intent(out) :: res(n)
+        end subroutine Integer_Matrix_Vector_Mult
+
+        module subroutine Real_Matrix_Vector_Mult(n, mat, m, vec, res, Type)
+            implicit none
+            character(len=1), intent(in) :: Type
+            integer(kind=4), intent(in) :: n, m
+            real(kind=8), intent(in) :: mat(m, n), vec(m)
+            real(kind=8), intent(out) :: res(n)
+        End subroutine Real_Matrix_Vector_Mult
+
+        module subroutine Complex_Matrix_Vector_Mult(n, mat, m, vec, res, Type)
+            implicit none
+            character(len=1), intent(in) :: type
+            integer(kind=4), intent(in) :: n, m
+            complex(kind=8), intent(in) :: mat(m, n), vec(m)
+            complex(kind=8), intent(out) :: res(n)
+        end subroutine Complex_Matrix_Vector_Mult
     end interface MatVecMul
     
 contains
 
-! Dot product of two different vector
-! Real(kind=8), integer(kind=4)
-! integer(kind=8), complex(kind=8)
-    real(kind=8) function RealdotProduct(n, vec1, vec2, increment_index) result(res)
-    implicit none 
-        integer(kind=4), intent(in) :: n, increment_index
+    subroutine Deallocate_memory(this)
+        type(Vector), intent(inout) :: this
+        ! Perform finalization actions here
+
+        if (allocated(this%int_elements)) then
+            deallocate(this%int_elements)
+            print *, "Deallocate Integer vector"
+        end if
+
+        if (allocated(this%real_elements)) then
+            deallocate(this%real_elements)
+            print *, "Deallocate real vector"
+        end if
+        if (allocated(this%complex_elements)) then
+            deallocate(this%complex_elements)
+            print *, "Deallocate complex vector"
+        end if
+    end subroutine Deallocate_memory
+
+    subroutine Reset_memory(this)
+        class(Vector), intent(inout) :: this
+        ! Reset the type for reuse
+        if (allocated(this%int_elements)) then
+            deallocate(this%int_elements)
+            print *, "Reset Integer Vector"
+        end if
+        if (allocated(this%real_elements)) then
+            deallocate(this%real_elements)
+            print *, "Reset real vector"
+        end if
+        if (allocated(this%complex_elements)) then
+            deallocate(this%complex_elements)
+            print *, "Reset complex vector"
+        end if
+    end subroutine Reset_memory
+
+    ! Copy real vector to real array [Real(kind=8)]
+    subroutine IntegerCopyVector(n, Vec1, vec2)
+        implicit none
+        integer(kind=4), intent(in) :: n
+        integer(kind=8), intent(in) :: vec1(n)
+        integer(kind=8), intent(out) :: Vec2(n)
+        vec2 = vec1
+    end subroutine IntegerCopyVector
+    ! Copy real vector to real array [Real(kind=8)]
+    subroutine RealCopyVector(n, Vec1, vec2)
+        implicit none
+        integer(kind=4), intent(in) :: n
+        real(kind=8), intent(in) :: vec1(n)
+        real(kind=8), intent(out) :: Vec2(n)
+        call dcopy(n, vec1, 1, vec2, 1)
+    end subroutine RealCopyVector
+    ! Copy complex vector to complex array [Real(kind=8)]
+    subroutine ComplexCopyVector(n, Vec1, vec2)
+        implicit none
+        integer(kind=4), intent(in) :: n
+        complex(kind=8), intent(in) :: vec1(n)
+        complex(kind=8), intent(inout) :: Vec2(n)
+        call zcopy(n, vec1, 1, vec2, 1)
+    end subroutine ComplexCopyVector
+
+    ! Dot product of two different vector [Real(kind=8)]
+    real(kind=8) function RealdotProduct(n, vec1, vec2) result(res)
+    implicit none
+        integer(kind=4), intent(in) :: n
         real(kind=8), intent(in) :: vec1(n)
         real(kind=8), intent(in) :: vec2(n)
         real(kind=8) :: ddot
-            res = ddot(n, vec1, increment_index, vec2, increment_index)
+            res = ddot(n, vec1, 1, vec2, 1)
         return
     end function RealdotProduct
-
-    complex(kind=8) function ComplexdotProduct(n, vec1, vec2, increment_index) result(res)
-    implicit none    
-        integer(kind=4), intent(in) :: n, increment_index
+    ! Dot product of two different vector [complex(kind=8)]
+    complex(kind=8) function ComplexdotProduct(n, vec1, vec2, Type) result(res)
+    implicit none
+        character(len=1), intent(in) :: Type
+        integer(kind=4), intent(in) :: n
         complex(kind=8), intent(in) :: vec1(n)
         complex(kind=8), intent(in) :: vec2(n)
-        complex(kind=8) :: zdotc
-            res = zdotc(n, vec1, increment_index, vec2, increment_index)
-        return
+        complex(kind=8) :: zdotc, zdotu
+
+        if (type == "T") then
+            res = zdotu(n, vec1, 1, vec2, 1)
+            return
+        end if
+            res = zdotc(n, vec1, 1, vec2, 1)
+            return
     end function ComplexdotProduct
+
+    ! Euclidean Norm of a real vector [Real(kind=8)]
+    real(kind=8) function Euclidean_Real_Vector_Norm(n, vec) result(res)
+        implicit none
+        integer(kind=4), intent(in) :: n
+        real(kind=8), intent(in) :: vec(n)
+        real(kind=8) ::DNRM2
+        res = DNRM2(n, vec, 1)
+        return
+    end function Euclidean_Real_Vector_Norm
+    ! Euclidean Norm of a complex vector [complex(kind=8)]
+    real(kind=8) function Euclidean_Complex_Vector_Norm(n, vec) result(res)
+        implicit none
+        integer(kind=4), intent(in) :: n
+        complex(kind=8), intent(in) :: vec(n)
+        real(kind=8) :: DZNRM2
+        res = DZNRM2(n, vec, 1)
+        return
+    end function Euclidean_Complex_Vector_Norm
 
     ! Scale the vector with a constant
     ! Real double precision vector Scaled with real constant
@@ -137,7 +255,7 @@ contains
     implicit none
         integer(kind=4), intent(in) :: n
         real(kind=8), intent(in) :: alpha
-        real(kind=8), intent(inout) :: Vec(n)    
+        real(kind=8), intent(inout) :: Vec(n)
         call dscal(n, alpha, Vec, 1)
     end subroutine Real_ScaleVector
     ! complex double precision vector Scaled with real constant
@@ -146,7 +264,7 @@ contains
         integer(kind=4), intent(in) :: n
         real(kind=8), intent(in) :: alpha
         integer(kind=8), intent(inout) :: Vec(n)
-        call zdscal(n, alpha, Vec, 1)    
+        call zdscal(n, alpha, Vec, 1)
     end subroutine Real_Scale_Complex_Vector
     ! complex double precision vector Scaled with complex constant
     subroutine complex_Scale_Complex_Vector(n, Vec, alpha)
@@ -154,7 +272,7 @@ contains
         integer(kind=4), intent(in) :: n
         complex(kind=8), intent(in) :: alpha
         complex(kind=8), intent(inout) :: Vec(n)
-        call zscal(n, alpha, Vec, 1)    
+        call zscal(n, alpha, Vec, 1)
     end subroutine complex_Scale_Complex_Vector
 
 ! Addition of two vectors with a constant value
@@ -166,7 +284,9 @@ contains
         integer(kind=4), intent(in) :: n
         integer(kind=8), intent(in) :: alpha
         integer(kind=8), intent(in) :: vec1(n)
-        integer(kind=8), intent(inout) :: vec2(n)   
+        integer(kind=8), intent(inout) :: vec2(n)
+        integer(kind=8) :: ix
+        vec2 = vec1 + alpha*vec2
     end subroutine Integer_VectorAdd
 
     subroutine Integer_VectorAdd2(n, vec1, vec2, vec3, alpha)
@@ -175,6 +295,7 @@ contains
         integer(kind=8), intent(in) :: alpha
         integer(kind=8), intent(in) :: vec1(n), vec2(n)
         integer(kind=8), intent(out) :: vec3(n)
+        vec3 = vec1 + alpha*vec2
     end subroutine Integer_VectorAdd2
 
     subroutine Real_VectorAdd(n, vec1, vec2, alpha)
@@ -183,7 +304,7 @@ contains
         real(kind=8), intent(in) :: alpha
         real(kind=8), intent(in) :: vec1(n)
         real(kind=8), intent(inout) :: vec2(n)
-        
+        call daxpy(n, alpha, vec1, 1, vec2, 1)
     end subroutine Real_VectorAdd
 
     subroutine Real_VectorAdd2(n, vec1, vec2, vec3, alpha)
@@ -192,6 +313,8 @@ contains
         real(kind=8), intent(in) :: alpha
         real(kind=8), intent(in) :: vec1(n), vec2(n)
         real(kind=8), intent(out) :: vec3(n)
+        call CopyVector(n, vec2, vec3)
+        call daxpy(n, alpha, vec1, 1, vec3, 1)
     end subroutine Real_VectorAdd2
 
     subroutine Complex_VectorAdd(n, vec1, vec2, alpha)
@@ -199,7 +322,8 @@ contains
         integer(kind=4), intent(in) :: n
         complex(kind=8), intent(in) :: alpha
         complex(kind=8), intent(in) :: vec1(n)
-        complex(kind=8), intent(inout) :: vec2(n)   
+        complex(kind=8), intent(inout) :: vec2(n)
+        call zaxpy(n, alpha, vec1, 1, vec2, 1)
     end subroutine Complex_VectorAdd
 
     subroutine Complex_VectorAdd2(n, vec1, vec2, vec3, alpha)
@@ -208,28 +332,9 @@ contains
         complex(kind=8), intent(in) :: alpha
         complex(kind=8), intent(in) :: vec1(n), vec2(n)
         complex(kind=8), intent(out) :: vec3(n)
+        call CopyVector(n, vec2, vec3)
+        call zaxpy(n, alpha, vec1, 1, vec3, 1)
     end subroutine Complex_VectorAdd2
-
-    subroutine Integer_Matrix_Vector_Mult(n, m, mat, vec, res)
-    implicit none
-        integer(kind=4), intent(in) :: n, m
-        integer(kind=8), intent(in) :: mat(n, m), vec(m)
-        integer(kind=8), intent(out) :: res(n)
-    end subroutine Integer_Matrix_Vector_Mult
-
-    subroutine Real_Matrix_Vector_Mult(n, m, Mat, vec, res)
-    implicit none
-        integer(kind=4), intent(in) :: n, m
-        real(kind=8), intent(in) :: mat(n, m), vec(m)
-        real(kind=8), intent(out) :: res(n)
-    End subroutine Real_Matrix_Vector_Mult
-
-    subroutine Complex_Matrix_Vector_Mult(n, m, mat, vec, res)
-    implicit none
-        integer(kind=4), intent(in) :: n, m
-        complex(kind=8), intent(in) :: mat(n, m), vec(m)
-        complex(kind=8), intent(out) :: res(n)
-    end subroutine Complex_Matrix_Vector_Mult
 
 end module Vector_operation_BLAS
 
@@ -248,20 +353,50 @@ module MatrixOperations
         complex(kind=8), allocatable :: complex_elements(:,:)
         integer(kind=4) :: rows, cols
     contains
+        generic :: init => real_initialize, complex_initialize
+        generic :: MatMul => real_multiply, complex_multiply
+        generic :: print_vector => print_real_vector, print_complex_vector
+        generic :: print_Matrix => print_real_matrix, print_complex_matrix
         procedure :: real_initialize
         procedure :: complex_initialize
         procedure :: real_multiply
         procedure :: complex_multiply
         procedure :: inverse
-        generic :: print_vector => print_real_vector, print_complex_vector                
-        generic :: print_Matrix => print_real_matrix, print_complex_matrix
         procedure :: print_real_matrix
         procedure :: print_complex_matrix
         procedure :: print_real_vector
         procedure :: print_complex_vector
+        procedure :: Reset_memory
+        final :: Deallocate_memory
     end type Matrix
 
     contains
+
+        subroutine Deallocate_memory(this)
+            type(Matrix), intent(inout) :: this
+                ! Perform finalization actions here
+            if (allocated(this%real_elements)) then
+                deallocate(this%real_elements)
+                print *, "Deallocate real matrix"
+            end if
+            if (allocated(this%complex_elements)) then
+                deallocate(this%complex_elements)
+                print *, "Deallocate complex matrix"
+            end if
+        end subroutine Deallocate_memory
+
+        subroutine Reset_memory(this)
+            class(Matrix), intent(inout) :: this
+            ! Reset the type for reuse
+            if (allocated(this%real_elements)) then
+                deallocate(this%real_elements)
+                print *, "Reset real matrix"
+            end if
+            if (allocated(this%complex_elements)) then
+                deallocate(this%complex_elements)
+                print *, "Reset complex matrix"
+            end if
+        end subroutine Reset_memory
 
     ! Method to initialize a matrix with given dimensions and values
     subroutine real_initialize(this, rows, cols, values)
@@ -314,7 +449,7 @@ module MatrixOperations
         write(*,*) " Real-Matrix "
         write(*,*) "-----------------------------------------"
         do igrid = 1, this%rows
-         write(*,'(*(E10.5))') this%real_elements(igrid,:)
+         write(*,'(*(E15.5))') this%real_elements(igrid,:)
         enddo
     end subroutine print_real_matrix
 
@@ -327,14 +462,14 @@ module MatrixOperations
         write(*,*) " Complex-Matrix Real elements "
         write(*,*) "-----------------------------------------"
         do igrid = 1, this%rows
-         write(*,'(*(E12.5))') real(this%complex_elements(igrid,:))
+         write(*,'(*(E15.5))') real(this%complex_elements(igrid,:))
         enddo
 
       write(*,*) "-----------------------------------------"
       write(*,*) " Complex-Matrix complex elements "
       write(*,*) "-----------------------------------------"
       do igrid = 1, this%rows
-        write(*,'(*(E12.5))') aimag(this%complex_elements(igrid,:))
+        write(*,'(*(E15.5))') aimag(this%complex_elements(igrid,:))
       enddo
     end subroutine print_complex_matrix
 
@@ -363,8 +498,9 @@ module MatrixOperations
     end subroutine real_multiply
 
     ! Method to perform matrix multiplication complex using LAPACK's ZGEMM subroutine
-    subroutine complex_multiply(this, other, result)
+    subroutine complex_multiply(this, other, result, dummy)
         implicit none
+        integer(kind=4), intent(in) :: dummy
         class(Matrix) :: this, other, result
         complex(kind=8), dimension(:,:), allocatable :: temp
         integer(kind=4) :: m, n, k

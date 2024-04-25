@@ -99,17 +99,19 @@ subroutine matrix_operation_check(nrowa, ncola, amat, nrowb, ncolb, bmat)
     type(Matrix) :: rmat1, rmat2, result_rmat
     
     ! Initialize matrices
-    call rmat1%real_initialize(size(amat,1), size(amat,2), amat)
-    call rmat2%real_initialize(size(bmat,1), size(bmat,2), bmat)
+    call rmat1%init(size(amat,1), size(amat,2), amat)
+    call rmat2%init(size(bmat,1), size(bmat,2), bmat)
     
     ! Perform matrix multiplication
-    call rmat1%real_multiply(rmat2, result_rmat)
+    call rmat1%Matmul(rmat2, result_rmat)
     print *, result_rmat%real_elements
     print *, "Matrix Multiplication Result:" 
-    call result_rmat%print_real_matrix()
+    call result_rmat%print_Matrix()
     
     ! Compute the inverse of a matrix
     call rmat1%inverse(result_rmat)
     print *, "Matrix Inverse Result:"
     print *, result_rmat%real_elements
+
+    call rmat1%Reset_memory()
 end subroutine matrix_operation_check
