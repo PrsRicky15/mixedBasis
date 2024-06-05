@@ -32,24 +32,28 @@ module Vector_operation_BLAS
             integer(kind=4), intent(in) :: size
             real(kind=8), dimension(size), intent(in) :: values
         end subroutine initialize
+
         ! Add two vectors
         module subroutine add(this, other, result)
             implicit none
             class(Vector), intent(in) :: this, other
             class(Vector), intent(out) :: result
         end subroutine add
+
         ! Subtract one vector from another
         module subroutine subtract(this, other, result)
             implicit none
             class(Vector), intent(in) :: this, other
             class(Vector), intent(out) :: result
         end subroutine subtract
+
         ! Dot product of two vectors
         module subroutine dotProductPre(this, other, result)
             implicit none
             class(Vector), intent(in) :: this, other
             real(kind=8), intent(out) :: result
         end subroutine dotProductPre
+
         ! Magnitude of a vector
         module real(kind=8) function magnitude(this)
             implicit none
@@ -813,6 +817,80 @@ module MatrixOperations
     deallocate(work)
     end subroutine real_geneign_sym_
 end module MatrixOperations
+
+! Created by prash on 4/22/2024.
+module MatrixModule
+    implicit none
+
+    type :: Matrix
+        real, pointer :: data(:,:) => null()   ! Pointer to the matrix data
+        integer(kind=4) :: rows      ! Number of rows
+        integer(kind=4) :: cols      ! Number of columns
+    contains
+        final :: finalize_matrix
+    end type Matrix
+
+    interface operator(.MultE.)
+        procedure element_wise_multiply_two_matrix
+    end interface
+
+    interface operator(.Mult.)
+        procedure multiply_two_matrix
+    end interface
+
+contains
+
+    subroutine initialize_matrix(mat, rows, cols)
+        type(Matrix), intent(out) :: mat
+        integer, intent(in) :: rows, cols
+        mat%rows = rows
+        mat%cols = cols
+        allocate(mat%data(rows, cols))
+    end subroutine initialize_matrix
+
+    ! Element-wise multiplication of two matrices
+    function element_wise_multiply_two_matrix(mat1, mat2) result(res)
+        type(Matrix), intent(in) :: mat1, mat2
+        type(Matrix) :: res
+        integer :: i, j
+
+        if (mat1%rows /= mat2%rows .or. mat1%cols /= mat2%cols) then
+            print *, "Error: Matrices must have the same dimensions for element-wise multiplication"
+            return
+        end if
+
+        call initialize_matrix(res, mat1%rows, mat1%cols)
+        do i = 1, mat1%rows
+            do j = 1, mat1%cols
+                res%data(i, j) = mat1%data(i, j) * mat2%data(i, j)
+            end do
+        end do
+    end function element_wise_multiply_two_matrix
+
+    ! Element-wise multiplication of two matrices
+    function multiply_two_matrix(mat1, mat2) result(res)
+        type(Matrix), intent(in) :: mat1, mat2
+        type(Matrix) :: res
+        integer :: i, j
+        if (mat1%rows /= mat2%rows .or. mat1%cols /= mat2%cols) then
+            print *, "Error: Matrices must have the same dimensions for element-wise multiplication"
+            return
+        end if
+
+        call initialize_matrix(res, mat1%rows, mat1%cols)
+        res%data = matmul(mat1%data, mat2%data)
+    end function multiply_two_matrix
+
+    subroutine finalize_matrix(mat)
+        type(Matrix), intent(inout) :: mat
+        if (associated(mat%data)) then
+            deallocate(mat%data)
+            nullify(mat%data)
+            print*, " The memory is freed from the system "
+        end if
+    end subroutine finalize_matrix
+
+end module MatrixModule
 
 ! A fortran module for Fourier transform of the Real and complex vector
 ! 1, 2, 3-Dimensional vector

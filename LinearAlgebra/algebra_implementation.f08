@@ -1,6 +1,7 @@
 submodule (Vector_operation_BLAS) Integer_vector
     implicit none
 contains
+
     ! The Vector is initialized by the Type
     ! Method to initialize a vector with given size and values
     module procedure initialize
@@ -24,6 +25,7 @@ contains
         end do
         result%size = this%size
     end procedure add
+
     ! Method to subtract one vector from another
     module procedure subtract
         implicit none
@@ -34,6 +36,7 @@ contains
         result%real_elements = this%real_elements - other%real_elements
         result%size = this%size
     end procedure subtract
+
     ! Method to compute the dot product of two vectors
     module procedure dotProductPre
         implicit none
@@ -47,6 +50,7 @@ contains
             result = result + this%real_elements(i) * other%real_elements(i)
         end do
     end procedure dotProductPre
+
     ! Method to compute the magnitude of a vector
     module procedure magnitude
         implicit none

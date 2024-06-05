@@ -1,4 +1,3 @@
-! Created by prash on 4/22/2024.
 
 module image_time_prop
 
