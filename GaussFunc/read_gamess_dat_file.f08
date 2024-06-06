@@ -14,36 +14,31 @@ module read_gamess_dat_file
         REAL(dp), intent(out) :: coef(nprm), expnt(nprm)
         REAL(dp), intent(out) :: coratm(natm,3), chrg(natm)
         REAL(dp), intent(out) :: corbas(nbsc,3)
-
         INTEGER(sp) :: npno, ipno, IPRM
         INTEGER(sp) :: iatm, ibsc, ival, ishell, ishel_bas
         REAL(dp)    :: ANO, xx, yy, zz
-
         CHARACTER(LEN=50) :: VAR
 
-        !--------------- READING THE CONTRACTION AND COEFF ----------------
-
-        90    FORMAT(A8,F7.1,3F18.10)
-        91    FORMAT(I6,F26.10,F12.8)
-        94    FORMAT(I6,F26.10,F12.8,F12.8)
-        92    FORMAT(3I6,5F20.10)
-        93    FORMAT(A5,I7)
+90    FORMAT(A8,F7.1,3F18.10)
+91    FORMAT(I6,F26.10,F12.8)
+94    FORMAT(I6,F26.10,F12.8,F12.8)
+93    FORMAT(A5,I7)
 
         OPEN(21,FILE=ifnm)
-        DO WHILE (trim(adjustl(VAR)) .NE. "C1" )
+        DO WHILE (trim(adjustl(VAR)) /= "C1" )
             READ(21,'(A2)') VAR
         ENDDO
         iprm = 0; iatm = 0; ibsc = 0
         200  READ(21,90) VAR, ANO, xx, yy, zz
 
-        if (int(ano) .ne. 0 ) then
+        if (int(ano) /= 0 ) then
             ibsc = ibsc + 1
             corbas(ibsc,1) = xx*bohr
             corbas(ibsc,2) = yy*bohr
             corbas(ibsc,3) = zz*bohr
         endif
 
-        if ( ano .gt. 0 ) then
+        if ( ano > 0 ) then
             iatm = iatm + 1
             coratm(iatm,1) = xx*bohr
             coratm(iatm,2) = yy*bohr
@@ -51,12 +46,12 @@ module read_gamess_dat_file
             chrg(iatm) = ano
         endif
 
-        IF (trim(adjustl(VAR)) .EQ. "$END") THEN
+        IF (trim(adjustl(VAR)) == "$END") THEN
             GOTO 900
         ENDIF
 
         ishel_bas = 0
-        DO 222 WHILE (Len_trim(VAR) .NE. 0)
+        DO WHILE (Len_trim(VAR) /= 0)
             READ(21,93) VAR , nPNO
 
             select case(trim(adjustl(var)))
@@ -129,9 +124,9 @@ module read_gamess_dat_file
                 DO ipno = 1, npno
                     iprm = iprm + 1
                     READ(21,91) IVAL, expnt(iprm), COEF(iprm)
-                15       enddo
+                enddo
             end select
-        222  enddo
+        enddo
         natm_shell(ibsc) = ishel_bas
         GOTO 200
         900  continue
@@ -154,22 +149,22 @@ module read_gamess_dat_file
         93   FORMAT(A5,I7)
 
         OPEN(11,FILE=ifnm)
-        DO WHILE ( trim(VAR) .NE. "C1" )
+        DO WHILE ( trim(VAR) /= "C1" )
             READ(11,'(A2)') VAR
         ENDDO
         igaus = 0; iatom = 0; ibas = 0; ishell = 0
         iprm = 0; ibasis = 0; iinpshel = 0
-        200     READ(11,90) VAR, ANO, xx, yy, zz
+200    READ(11,90) VAR, ANO, xx, yy, zz
 
-        if ( int(ano) .ne. 0 ) ibas = ibas + 1
-        if ( int(ano) .gt. 0 ) iatom = iatom + 1
+        if ( int(ano) /= 0 ) ibas = ibas + 1
+        if ( int(ano) > 0 ) iatom = iatom + 1
 
-        IF (trim(adjustl(VAR)) .EQ. "$END") THEN
+        IF (trim(adjustl(VAR)) == "$END") THEN
             natom = iatom; nbsc = ibas; nshell = ishell; nprm = iprm
             ninpshel=iinpshel; ngaus  = igaus; nbasis = ibasis
             GOTO 900
         ENDIF
-        DO 222 WHILE (Len_trim(VAR) .NE. 0)
+        DO WHILE (Len_trim(VAR) /= 0)
             READ(11,93) VAR, PNO
             select case(trim(adjustl(var)))
             case("S")
@@ -238,10 +233,10 @@ module read_gamess_dat_file
                 ENDDO
                 ibasis = ibasis + 15
             end select
-        222     enddo
+        enddo
         GOTO    200
-        900     CONTINUE
+900     CONTINUE
         CLOSE(11)
-    END
+    END subroutine NUM_CAL_GAUSS_
 
 end module read_gamess_dat_file

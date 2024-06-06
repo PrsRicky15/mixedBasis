@@ -286,4 +286,65 @@ contains
         deallocate(dp_table)
     end function sgma_1dir2
 
+    FUNCTION DELTA( K, A, C ) result(res)
+    USE const
+    IMPLICIT NONE
+        REAL(dp)    :: res, A, C, EKZ, IGAMMA
+        INTEGER(sp) :: K
+
+        EKZ = ZERO; DELTA = ZERO
+        IF ( C >= ZERO ) THEN
+            EKZ = ONE
+        ELSE
+            EKZ = (-ONE)**(K+1)
+        ENDIF
+        res = GAMMA( ( K + 1 ) * HALF ) - IGAMMA((( K + 1 ) * HALF),( A * C * C)) * EKZ
+    END function delta
+
+    FUNCTION IMNI(C,N,K,PA,alp1,alp2) result(res)
+        USE INPUT
+        IMPLICIT NONE
+
+        INTEGER(sp) :: ITAU, N, K, NCR
+        REAL(dp) :: res, GMMA, DELTA, PA, C, alp1, alp2
+        REAL(dp) :: VAL1, VAL2, VAL3, VAL
+
+        GMMA = alp1  + alp2
+        VAL  = ZERO; IMNI = ZERO
+
+        DO ITAU = 0 , N
+            VAL1 = ZERO; VAL2 = ZERO; VAL3 = ZERO
+            VAL1 = ( (-ONE) ** (N - ITAU) ) * NCR ( N, ITAU ) *  &
+                    ( GMMA ** ( - HALF * ( K + ITAU + ONE ) ) )
+            VAL2 = ( (-ONE) ** K ) * ( (C + PA) ** (N-ITAU) ) *  &
+                    DELTA ( K + ITAU, GMMA, C + PA )
+            VAL3 = ( (C - PA) ** (N - ITAU) ) * DELTA (K+ITAU,GMMA,C-PA)
+            VAL = VAL + VAL1 * ( VAL2 + VAL3 )
+        ENDDO
+
+        res = VAL * HALF
+
+    END FUNCTION IMNI
+
+    FUNCTION SIGMAC(C, N, l1, l2, PA, PB, P, alp1, alp2) result(res)
+    USE const
+    IMPLICIT NONE
+
+        INTEGER(sp) :: N, IRHO, ISGM, KMU, KNU, NCR, l1, l2
+        REAL(dp)    :: C, PA, PB, P, IMNI, alp1, alp2, res
+
+        KMU = l1
+        KNU = l2
+        SIGMAC = ZERO
+
+        DO IRHO = 0 , KMU
+            DO ISGM = 0 , KNU
+                SIGMAC = SIGMAC + NCR (KMU, IRHO) * NCR (KNU, ISGM) *    &
+                        (PA ** (KMU - IRHO)) *                 &
+                        (PB ** (KNU - ISGM)) *                 &
+                        IMNI (C, N, IRHO + ISGM, P, alp1, alp2)
+            end do
+        end do
+    END
+
 end module Gaussian_Integrals
