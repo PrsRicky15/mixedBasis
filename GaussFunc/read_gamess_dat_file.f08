@@ -133,7 +133,7 @@ module read_gamess_dat_file
         CLOSE(21)
     END
 
-    SUBROUTINE NUM_CAL_GAUSS_(ifnm, natom, nbsc, ninpshel, nshell, ngaus, nprm, nbasis)
+    SUBROUTINE gaussian_basis_count(ifnm, natom, nbsc, ninpshel, nshell, ngaus, nprm, nbasis)
         USE const
         IMPLICIT NONE
         CHARACTER(len=50), INTENT(in) :: ifnm
@@ -193,6 +193,6 @@ module read_gamess_dat_file
             END DO
         END DO
         CLOSE(11)
-    END SUBROUTINE NUM_CAL_GAUSS_
+    END SUBROUTINE gaussian_basis_count
 
 end module read_gamess_dat_file
