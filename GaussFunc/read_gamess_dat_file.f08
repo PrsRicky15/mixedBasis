@@ -134,11 +134,11 @@ module read_gamess_dat_file
     END
 
     SUBROUTINE NUM_CAL_GAUSS_(ifnm, natom, nbsc, ninpshel, nshell, ngaus, nprm, nbasis)
-        use const
+        USE const
         IMPLICIT NONE
-        character(len=50), intent(in) :: ifnm
-        integer(sp), intent(out) :: natom, nbsc, ninpshel, nshell, nprm, nbasis
-        integer(sp), intent(out) :: ngaus, nprm
+        CHARACTER(len=50), INTENT(in) :: ifnm
+        INTEGER(sp), INTENT(out) :: natom, nbsc, ninpshel, nshell, nprm, nbasis
+        INTEGER(sp), INTENT(out) :: ngaus, nprm
 
         INTEGER(sp) :: iatom, ibas, iinpshel, ishell, igaus, iprm, ibasis, ipno, pno
         REAL(dp)    :: xx, yy, zz, ANO
@@ -148,95 +148,51 @@ module read_gamess_dat_file
         90   FORMAT(A8,F7.1,3F18.10)
         93   FORMAT(A5,I7)
 
-        OPEN(11,FILE=ifnm)
-        DO WHILE ( trim(VAR) /= "C1" )
-            READ(11,'(A2)') VAR
-        ENDDO
+        OPEN(11, FILE=ifnm)
+        DO WHILE ( TRIM(VAR) /= "C1" )
+            READ(11, '(A2)') VAR
+        END DO
+
         igaus = 0; iatom = 0; ibas = 0; ishell = 0
         iprm = 0; ibasis = 0; iinpshel = 0
-200    READ(11,90) VAR, ANO, xx, yy, zz
 
-        if ( int(ano) /= 0 ) ibas = ibas + 1
-        if ( int(ano) > 0 ) iatom = iatom + 1
+        DO
+            READ(11, 90) VAR, ANO, xx, yy, zz
 
-        IF (trim(adjustl(VAR)) == "$END") THEN
-            natom = iatom; nbsc = ibas; nshell = ishell; nprm = iprm
-            ninpshel=iinpshel; ngaus  = igaus; nbasis = ibasis
-            GOTO 900
-        ENDIF
-        DO WHILE (Len_trim(VAR) /= 0)
-            READ(11,93) VAR, PNO
-            select case(trim(adjustl(var)))
-            case("S")
-                ishell = ishell + 1
-                iinpshel = iinpshel + 1
-                DO Ipno = 1 , PNO
-                    READ(11,'(A30)') char
-                    igaus = igaus + 1
-                    iprm = iprm + 1
-                ENDDO
-                ibasis = ibasis + 1
-            case("P")
-                ishell = ishell + 1
-                iinpshel = iinpshel + 1
-                DO Ipno = 1 , PNO
-                    igaus = igaus + 1
-                    iprm = iprm + 3
-                    READ(11,'(A30)') char
-                ENDDO
-                ibasis = ibasis + 3
-            case("L")
-                ishell = ishell + 2
-                iinpshel = iinpshel + 1
-                DO Ipno = 1 , PNO
-                    igaus = igaus + 1
-                    iprm = iprm + 4
-                    READ(11,'(A30)') char
-                ENDDO
-                igaus = igaus + pno
-                ibasis = ibasis + 4
-            case("SP")
-                ishell = ishell + 2
-                iinpshel = iinpshel + 1
-                DO Ipno = 1 , PNO
-                    igaus = igaus + 1
-                    iprm = iprm + 4
-                    READ(11,'(A30)') char
-                ENDDO
-                igaus = igaus + pno
-                ibasis = ibasis + 4
-            case("D")
-                ishell = ishell + 1
-                iinpshel = iinpshel + 1
-                DO Ipno = 1 , PNO
-                    igaus = igaus + 1
-                    iprm = iprm + 6
-                    READ(11,'(A30)') char
-                ENDDO
-                ibasis = ibasis + 6
-            case("F")
-                ishell = ishell + 1
-                iinpshel = iinpshel + 1
-                DO Ipno = 1 , PNO
-                    igaus = igaus + 1
-                    iprm = iprm + 10
-                    READ(11,'(A30)') char
-                ENDDO
-                ibasis = ibasis + 10
-            case("G")
-                ishell = ishell + 1
-                iinpshel = iinpshel + 1
-                DO Ipno = 1 , PNO
-                    igaus = igaus + 1
-                    iprm = iprm + 15
-                    READ(11,'(A30)') char
-                ENDDO
-                ibasis = ibasis + 15
-            end select
-        enddo
-        GOTO    200
-900     CONTINUE
+            IF ( INT(ANO) /= 0 ) ibas = ibas + 1
+            IF ( INT(ANO) > 0 ) iatom = iatom + 1
+
+            IF (TRIM(ADJUSTL(VAR)) == "$END") THEN
+                natom = iatom; nbsc = ibas; nshell = ishell; nprm = iprm
+                ninpshel = iinpshel; ngaus = igaus; nbasis = ibasis
+                EXIT
+            ENDIF
+
+            DO WHILE (LEN_TRIM(VAR) /= 0)
+                READ(11, 93) VAR, PNO
+                SELECT CASE(TRIM(ADJUSTL(VAR)))
+                CASE("S", "P", "L", "SP", "D", "F", "G")
+                    ishell = ishell + SELECTED_INT_KIND(PNO > 0) * (1 + SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) /= "S"))
+                    iinpshel = iinpshel + 1
+                    igaus = igaus + ABS(PNO)
+                    iprm = iprm + SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "S") * PNO + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "P") * (3 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "L") * (4 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "SP") * (4 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "D") * (6 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "F") * (10 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "G") * (15 * PNO)
+                    ibasis = ibasis + SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "S") * PNO + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "P") * (3 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "L") * (4 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "SP") * (4 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "D") * (6 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "F") * (10 * PNO) + &
+                            SELECTED_INT_KIND(TRIM(ADJUSTL(VAR)) == "G") * (15 * PNO)
+                END SELECT
+            END DO
+        END DO
         CLOSE(11)
-    END subroutine NUM_CAL_GAUSS_
+    END SUBROUTINE NUM_CAL_GAUSS_
 
 end module read_gamess_dat_file
