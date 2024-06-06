@@ -7,14 +7,6 @@ module const
     real(dp), parameter :: half = 0.5_dp, tby4 = 0.25_dp
 end module const
 
-module AngularMomentsModule
-    use const
-    implicit none
-
-
-end module AngularMomentsModule
-
-
 module MathFunction
     use const
     implicit none
@@ -27,6 +19,7 @@ module MathFunction
     type(AngularMoments), dimension(max_shell_type, max_shell_index) :: moments
 
     contains
+
     subroutine initializeAngularMoments()
         integer(sp) :: shell_type, shell_index
 
@@ -90,6 +83,23 @@ module MathFunction
         end select
     end function factii
 
+    FUNCTION PAX(N,X) result(res)
+        use const
+        IMPLICIT NONE
+        REAL(dp)    :: res, N, X
+        INTEGER(sp) :: IX
+
+        PAX = ZERO
+        DO IX = 0 , FLOOR(N)
+            IF ( IX == 0 ) THEN
+                PAX = ONE
+            ELSE
+                PAX = PAX - ((X**(IX-1))*DEXP(-X))/GAMMA((IX-1)*ONE + ONE)
+            ENDIF
+        ENDDO
+        res = PAX
+    END function pax
+
     function boysn(X, N) result(res)
         real(dp), intent(in) :: X, N
         real(dp) :: res, val2, twox
@@ -110,6 +120,18 @@ module MathFunction
         end do
     end function boysn
 
+    real(dp) FUNCTION IGAMMA(N,X) result(res)
+        USE const
+        IMPLICIT NONE
+        REAL(dp)     :: X, BOYSN, N, PAX
+        res = ZERO
+        IF ( MOD(N,REAL(FLOOR(N))) == 0.0d0   ) THEN
+            res = PAX(N,X) * GAMMA(N)
+        ELSE
+            res = BOYSN(X,N) * (TWO * (X**N))
+        ENDIF
+    END function igamma
+
 end module MathFunction
 
 module Gaussian_Integrals
@@ -117,8 +139,6 @@ module Gaussian_Integrals
     use utils
     implicit none
 contains
-
-
 
     function ovr_nrm(l, m, n, alp) result(res)
         integer(sp), intent(in) :: l, m, n
