@@ -7,10 +7,65 @@ module const
     real(dp), parameter :: half = 0.5_dp, tby4 = 0.25_dp
 end module const
 
+module AngularMomentsModule
+    use const
+    implicit none
+
+
+end module AngularMomentsModule
+
+
 module MathFunction
     use const
     implicit none
-contains
+    private
+    type :: AngularMoments
+        integer(sp) :: lx, ly, lz
+    end type AngularMoments
+
+    integer(sp), parameter :: max_shell_type = 15, max_shell_index = 10
+    type(AngularMoments), dimension(max_shell_type, max_shell_index) :: moments
+
+    contains
+    subroutine initializeAngularMoments()
+        integer(sp) :: shell_type, shell_index
+
+        ! Define the Cartesian angular moments for each shell type and index
+        moments = reshape([ &
+        AngularMoments(0, 0, 0), &
+        AngularMoments(1, 0, 0), &
+        AngularMoments(0, 1, 0), &
+        AngularMoments(0, 0, 1), &
+        AngularMoments(2, 0, 0), &
+        AngularMoments(0, 2, 0), &
+        AngularMoments(0, 0, 2), &
+        AngularMoments(1, 1, 0), &
+        AngularMoments(1, 0, 1), &
+        AngularMoments(0, 1, 1), &
+        AngularMoments(3, 0, 0), &
+        AngularMoments(0, 3, 0), &
+        AngularMoments(0, 0, 3), &
+        AngularMoments(2, 1, 0), &
+        AngularMoments(2, 0, 1), &
+        AngularMoments(1, 2, 0), &
+        AngularMoments(0, 2, 1), &
+        AngularMoments(1, 0, 2), &
+        AngularMoments(0, 1, 2), &
+        AngularMoments(1, 1, 1) &
+        ], [max_shell_type, max_shell_index])
+
+    end subroutine initializeAngularMoments
+
+    subroutine get_cart_anglr_moment(shell_type, shell_index, lx, ly, lz)
+        integer(sp), intent(in)  :: shell_type, shell_index
+        integer(sp), intent(out) :: lx, ly, lz
+
+        ! Assign the Cartesian angular moments based on shell type and index
+        lx = moments(shell_type, shell_index)%lx
+        ly = moments(shell_type, shell_index)%ly
+        lz = moments(shell_type, shell_index)%lz
+
+    end subroutine get_cart_anglr_moment
 
     function factii(num) result(res)
         integer(sp), intent(in) :: num
@@ -62,6 +117,8 @@ module Gaussian_Integrals
     use utils
     implicit none
 contains
+
+
 
     function ovr_nrm(l, m, n, alp) result(res)
         integer(sp), intent(in) :: l, m, n

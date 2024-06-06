@@ -1,4 +1,5 @@
 program OOP_vector_operations_example
+    use test_code
     implicit none
     
     integer(kind=4), parameter :: ngrid = 12, nmat = 2
