@@ -896,10 +896,107 @@ end module MatrixModule
 ! 1, 2, 3-Dimensional vector
 module FastFourierTransform
     implicit none
-    private
+    contains
+    ! Real one-dimensional array Fast-Fourier transform
+    subroutine fft_r2c_arr_1d_(ngrd, arin, arout)
+    use fftpar
+    implicit none
 
-    type, abstract :: showable
+    integer(kind=4), intent(in) :: ngrd
+    real(kind=8), intent(in) :: arin(ngrd)
+    complex(kind=8), intent(out) :: arout(ngrd/2 + 1)
+    integer(kind=8) :: plan_forward
 
-    end type showable
+    call dfftw_plan_dft_r2c_1d_(plan_forward, ngrd, arin, arout, &
+            FFTW_ESTIMATE)
+    call dfftw_execute_dft_r2c_(plan_forward, arin, arout)
+    call dfftw_destroy_plan_(plan_forward)
+    call dfftw_cleanup_()
+    end
 
+! Real one-dimensional array Fast-Fourier transform
+! multiplied by diagonal momentum
+subroutine fft_P_r2c_arr_1d_(ngrd, arin, arout)
+    use fftpar
+    implicit none
+
+    integer(kind=4), intent(in) :: ngrd
+    real(kind=8), intent(in) :: arin(ngrd)
+    complex(kind=8), intent(out) :: arout(ngrd/2 + 1)
+    integer(kind=8) :: plan_forward
+
+    call dfftw_plan_dft_r2c_1d_(plan_forward, ngrd, arin, arout, &
+            FFTW_ESTIMATE)
+    call dfftw_execute_dft_r2c_(plan_forward, arin, arout)
+    call dfftw_destroy_plan_(plan_forward)
+    call dfftw_cleanup_()
+    end
+
+! Real one-dimensional array Fast-Fourier transform
+! multiplied by diagonal Kinetic energy
+    subroutine fft_P2_r2c_arr_1d_(ngrd, arin, arout)
+    use fftpar
+    implicit none
+
+    integer(kind=4), intent(in) :: ngrd
+    real(kind=8), intent(in) :: arin(ngrd)
+    complex(kind=8), intent(out) :: arout(ngrd/2 + 1)
+    integer(kind=8) :: plan_forward
+
+    call dfftw_plan_dft_r2c_1d_(plan_forward, ngrd, arin, arout, &
+            FFTW_ESTIMATE)
+    call dfftw_execute_dft_r2c_(plan_forward, arin, arout)
+    call dfftw_destroy_plan_(plan_forward)
+    call dfftw_cleanup_()
+
+    end
+
+! Complex one-dimensional array inverse Fourier transform
+    subroutine ifft_c2r_arr_1d_(ngrd, arin, arout)
+    use fftpar
+    implicit none
+    integer(kind=4), intent(in) :: ngrd
+    complex(kind=8), intent(in) :: arout(ngrd/2 + 1)
+    real(kind=8), intent(out) :: arin(ngrd)
+    integer(kind=8) :: plan_backward
+    call dfftw_plan_dft_c2r_1d_(plan_backward, ngrd, arout, arin, &
+            FFTW_ESTIMATE)
+    call dfftw_execute_(plan_backward)
+    call dfftw_destroy_plan_(plan_backward)
+    call dfftw_cleanup_()
+    end
+
+! Complex one-dimensional array inverse Fourier transform
+! multiplied by diagonal momentum
+    subroutine ifft_P_c2r_arr_1d_(ngrd, arin, arout)
+    use fftpar
+    implicit none
+
+    integer(kind=4), intent(in) :: ngrd
+    complex(kind=8), intent(in) :: arout(ngrd/2 + 1)
+    real(kind=8), intent(out) :: arin(ngrd)
+    integer(kind=8) :: plan_backward
+
+    call dfftw_plan_dft_c2r_1d_(plan_backward, ngrd, arout, arin, &
+            FFTW_ESTIMATE)
+    call dfftw_execute_(plan_backward)
+    call dfftw_destroy_plan_(plan_backward)
+    call dfftw_cleanup_()
+    end
+
+! Complex one-dimensional array inverse Fourier transform
+! multiplied by diagonal Kinetic energy
+    subroutine ifft_P2_c2r_arr_1d_(ngrd, arin, arout)
+    use fftpar
+    implicit none
+    integer(kind=4), intent(in) :: ngrd
+    complex(kind=8), intent(in) :: arout(ngrd/2 + 1)
+    real(kind=8), intent(out) :: arin(ngrd)
+    integer(kind=8) :: plan_backward
+    call dfftw_plan_dft_c2r_1d_(plan_backward, ngrd, arout, arin, &
+            FFTW_ESTIMATE)
+    call dfftw_execute_(plan_backward)
+    call dfftw_destroy_plan_(plan_backward)
+    call dfftw_cleanup_()
+    end
 end module FastFourierTransform

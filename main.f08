@@ -1,4 +1,40 @@
-program OOP_vector_operations_example
+! Code for imaginary time-propagation for evaluating eigen-values and
+! eigen-states of one-dimensional Fourier grid Hamiltonian
+program onedim_frgrd_imagtim_prop
+    use numconst
+    use image_time_prop
+    implicit none
+
+    real(kind=8), allocatable :: eval(:), evec(:,:)
+
+    real(kind=8)  :: xmin, xmax, mass, cutof,  error, dtim
+    integer(kind=4) :: ix, jx, nx, iste, nste
+
+    character (len=80) :: flerr, fleval, flevec
+
+    open(11,file="imgtime.inp")
+    read(11,*) xmin, xmax, nx
+    read(11,*) mass
+    read(11,*) cutof
+    read(11,*) dtim, nste
+    read(11,*) flerr
+    close(11)
+
+    allocate(evec(nx, nste), eval(nste))
+
+    evec = zero
+    call imag_time_1d_( xmin, xmax, mass, dtim, cutof, nx, nste, &
+            evec, eval, flerr )
+
+    open(11,file="psi.txt")
+    do ix = 1, nx
+        write(11,*) (evec(ix,iste),iste=1,nste)
+    enddo
+    close(11)
+
+end
+
+subroutine OOP_vector_operations_example
     use test_code
     implicit none
     
@@ -41,5 +77,5 @@ program OOP_vector_operations_example
 
     call matrix_operation_check(nmat, nmat, amat, nmat, nmat, bmat)
     deallocate(amat, bmat)
-end program OOP_vector_operations_example
+end subroutine OOP_vector_operations_example
 
