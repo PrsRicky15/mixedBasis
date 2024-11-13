@@ -920,8 +920,599 @@ module time_prop_Trotter
     call dfftw_destroy_plan_ ( plan_forward )
     call dfftw_destroy_plan_ ( plan_backward )
 
-end
-!     --------------------------------------------------------------------------
+    end
+
+        subroutine tprop_KH_dvr2d_cart_ ( xmin, xmax, ymin, ymax, nx, ny, n2d, natm, cord,      &
+                epsln, omega, phase, lmda, totime, ntim, nstrt, ncw, noff, noptc,      &
+                nstep, psi0, flwfnc, fleng, fltden, fltpot )
+            use input
+            implicit none
+
+            real(kind=8), intent(in) :: xmin, xmax, ymin, ymax, lmda
+            real(kind=8), intent(in) :: epsln, omega, phase, totime
+            real(kind=8), intent(in) :: psi0(n2d), cord(natm,2)
+            integer(kind=4), intent(in) :: nx, ny, n2d, ntim, nstep, natm
+            integer(kind=4), intent(in) :: nstrt, ncw, noff, noptc
+            character(len=80), intent(in) :: flwfnc, fleng, fltden, fltpot
+            real(kind=8), allocatable :: kmtx(:,:), kmty(:,:), kex(:), key(:)
+            real(kind=8), allocatable :: vx(:), force(:), vcap(:), tdiag(:)
+            real(kind=8), allocatable :: tmcof(:,:), tmptn(:,:)
+            complex(kind=8), allocatable :: ztmtx(:,:), ztmty(:,:), vxexp(:)
+            complex(kind=8), allocatable :: cofi(:), coff(:), cofp(:)
+            complex(kind=8), allocatable :: cfx1(:), cfx2(:), cfy1(:), cfy2(:)
+            integer(kind=4) :: ix, iy, jx, jy, i2d, nxy, itim, icof
+            real(kind=8) :: x, dx, y, dy, rvl, rmax, poten, dpotn
+            real(kind=8) :: tau, plstr, tcw, tof, tff, plend, tim2, epls
+            real(kind=8) :: time, dtim, alpx, alpy, wfnrm
+            complex(kind=8) :: hlfdt, teng, indpl
+
+            rmax = dsqrt(xmax*xmax + ymax*ymax)
+            dx = (xmax - xmin)/(nx - one)
+            dy = (ymax - ymin)/(ny - one)
+            dtim = totime/(ntim-one)
+            tau = twpi/omega
+            plstr = pi/(two*nstrt*tau)
+            tcw = nstrt*tau
+            tof = ncw*tau + tcw
+            tff = tof + noff*tau
+            plend = pi/(2.0d0*(tff-tof))
+
+            allocate(kmtx(nx, nx), kmty(ny, ny))
+            allocate(ztmtx(nx, nx), ztmty(ny, ny))
+            allocate(kex(nx), key(ny))
+
+            call Kinetic(dx, nx, kmtx)
+            call CALL_DSYEV(kmtx, nx, kex)
+            ztmtx = kmtx
+
+            call Kinetic(dy, ny, kmty)
+            call CALL_DSYEV(kmty, ny, key)
+            ztmty = kmty
+            deallocate(kmtx, kmty)
+            allocate(tdiag(n2d), vcap(n2d), cofi(n2d))
+            nxy = 0
+            open(101,file=flwfnc)
+            do ix = 1, nx
+                x = xmin + (ix-one)*dx
+                do iy = 1, ny
+                    y = ymin + (iy-one)*dy
+                    rvl = dsqrt(x*x + y*y)
+                    nxy = nxy + 1
+                    tdiag(nxy) = kex(ix) + key(iy)
+                    cofi(nxy) = psi0(nxy)
+                    vcap(nxy) = zero
+                    if ( rvl > (rmax - 5.000d+00) ) &
+                            vcap(nxy) = lmda*(rvl - (rmax - 5.00D+00))**2.0d0
+                    write(101,*) x, y, psi0(nxy), vcap(nxy)
+                enddo
+                write(101,*)
+            enddo
+            close(101)
+
+            deallocate(kex, key)
+            allocate(vx(n2d), force(n2d), vxexp(n2d), coff(n2d), cofp(n2d))
+            allocate(cfx1(nx), cfx2(nx), cfy1(ny), cfy2(ny))
+            allocate(tmcof(n2d, ntim/nstep), tmptn(n2d,ntim/nstep))
+
+            tmcof = zero; tmptn = zero
+            hlfdt = half*dtim
+            icof = 0
+            open(11,file=fleng)
+            do itim = 1, ntim
+                time = (itim - one)*dtim
+                epls = epsln
+                tim2 = time - tof
+                if(time <= tcw) epls = epls*dsin(plstr*time)**2.0D+00
+                if(time >= tof) epls = epls*dcos(plend*tim2)**2.0D+00
+                if(time >= tff) epls = zero
+
+                alpx = (epls*dcos(omega*time))/(omega*omega)
+                alpy = (epls*dsin(omega*time))/(omega*omega)
+
+                nxy = 0
+                do ix = 1, nx
+                    x = xmin + (ix-one)*dx
+                    do iy = 1, ny
+                        y = ymin + (iy-one)*dy
+                        nxy = nxy + 1
+
+                        vx(nxy) = poten(natm, cord, x-alpx, y-alpy)
+                        force(nxy) = dpotn(natm, cord, x-alpx, y-alpy)
+                        vxexp(nxy) = cdexp(-io*hlfdt*vx(nxy))
+                        coff(nxy) = vxexp(nxy)*cofi(nxy)
+
+                    enddo
+                enddo
+
+                do iy = 1, ny
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('T', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+
+                    do ix = 1, nx
+                        cofi(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+                enddo
+
+                 nxy = 0
+                do ix = 1, nx
+                    do iy = 1, ny
+                        cfy1(iy) = cofi(nx*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('T', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+                enddo
+
+                do i2d = 1, n2d
+                    cofi(i2d) = cdexp(-io*tdiag(i2d)*dtim)*coff(i2d)
+                enddo
+
+                 nxy = 0
+                do ix = 1, nx
+                    do iy = 1, ny
+                        cfy1(iy) = cofi(nx*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('N', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+                enddo
+
+                do iy = 1, ny
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('N', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+
+                    do ix = 1, nx
+                        cofi(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+                enddo
+
+                do i2d = 1, n2d
+                    coff(i2d) = dexp(-vcap(i2d)*dtim)*vxexp(i2d)*cofi(i2d)
+                enddo
+
+                cofi = coff
+                if ( mod(itim ,nstep) == 0 ) then
+                    icof = icof + 1
+                    do i2d = 1, n2d
+                        tmcof(i2d, icof) = cdabs(conjg(cofi(i2d))*cofi(i2d))
+                        tmptn(i2d, icof) = vx(i2d)
+                    enddo
+                endif
+
+                do iy = 1, ny
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+                    call zgemm ('T', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+                    do ix = 1, nx
+                        cofp(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+                enddo
+
+                coff = (zero, zero); nxy = 0
+                do ix = 1, nx
+                    do iy = 1, ny
+                        cfy1(iy) = cofp(nx*(ix-1) + iy)
+                    enddo
+                    call zgemm ('T', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+                enddo
+
+                cofp = (zero, zero)
+                do i2d = 1, n2d
+                    cofp(i2d) = tdiag(i2d)*coff(i2d)
+                enddo
+
+                 nxy = 0
+                do ix = 1, nx
+
+                    do iy = 1, ny
+                        cfy1(iy) = cofp(nx*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('N', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+
+                enddo
+
+                cofp = (zero, zero)
+                do iy = 1, ny
+
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('N', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+
+                    do ix = 1, nx
+                        cofp(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+
+                enddo
+
+                teng = (zero, zero); wfnrm = zero; indpl = (zero, zero)
+                do i2d = 1, n2d
+                    teng = teng + conjg(cofi(i2d))*cofp(i2d) + &
+                            conjg(cofi(i2d))*(vx(i2d)-io*vcap(i2d))*cofi(i2d)
+                    wfnrm = wfnrm  + cdabs(conjg(cofi(i2d))*cofi(i2d))
+                    indpl = indpl + conjg(cofi(i2d))*force(i2d)*cofi(i2d)
+                enddo
+
+                write(11,*) time, epls*dcos(omega*time), epls*dsin(omega*time),&
+                        real(teng), aimag(teng), wfnrm, real(indpl)
+
+            enddo
+            close(11)
+
+            open(12,file=fltden)
+            nxy = 0
+            do ix = 1, nx
+                x = xmin + (ix-one)*dx
+                do iy = 1, ny
+                    y = ymin + (iy-one)*dy
+                    nxy = nxy + 1
+                    write(12,'(*(f12.7))') x, y, &
+                            (tmcof(nxy,itim), itim=1,ntim/nstep)
+                enddo
+                write(12,*)
+            enddo
+            close(12)
+
+            open(12,file=fltpot)
+            nxy = 0
+            do ix = 1, nx
+                x = xmin + (ix-one)*dx
+                do iy = 1, ny
+                    y = ymin + (iy-one)*dy
+                    nxy = nxy + 1
+                    write(12,'(*(f12.7))') x, y, &
+                            (tmptn(nxy,itim), itim=1,ntim/nstep)
+                enddo
+                write(12,*)
+            enddo
+            close(12)
+
+            deallocate(ztmtx, ztmty, cofi, coff, cofp, cfx1, cfx2, cfy1, cfy2)
+            deallocate(tdiag, vx, vxexp, vcap, force, tmcof, tmptn)
+
+        end
+
+        subroutine tprop_dpl_dvr2d_cart_ ( xmin, xmax, ymin, ymax, nx, ny, n2d, natm, cord, &
+                epsln, omega, phase, lmda, totime, ntim, nstrt, ncw, noff, noptc,      &
+                nstep, psi0, flwfnc, fleng, fltden, fltpot )
+            use input
+            implicit none
+
+            real(kind=8), intent(in) :: xmin, xmax, ymin, ymax
+            real(kind=8), intent(in) :: epsln, omega, phase
+            real(kind=8), intent(in) :: lmda, totime
+            real(kind=8), intent(in) :: psi0(n2d), cord(natm,2)
+            integer(kind=4), intent(in) :: nx, ny, n2d, ntim, nstep, natm
+            integer(kind=4), intent(in) :: nstrt, ncw, noff, noptc
+            character(len=80), intent(in) :: flwfnc, fleng, fltden, fltpot
+
+            real(kind=8), allocatable :: kmtx(:,:), kmty(:,:), kex(:), key(:)
+            real(kind=8), allocatable :: vx(:), vcap(:), frce(:), tdiag(:)
+            real(kind=8), allocatable :: tmcof(:,:), tmptn(:,:)
+            complex(kind=8), allocatable :: ztmtx(:,:), ztmty(:,:), vxexp(:)
+            complex(kind=8), allocatable :: cofi(:), coff(:), cofp(:)
+            complex(kind=8), allocatable :: cfx1(:), cfx2(:), cfy1(:), cfy2(:)
+            integer(kind=4) :: ix, iy, jx, jy, i2d, nxy, itim, icof
+            real(kind=8) :: x, dx, y, dy, rmax, rvl, xtim, ytim, poten, dpotn
+            real(kind=8) :: tau, plstr, tcw, tof, tff, plend, tim2, epls
+            real(kind=8) :: time, dtim, indpl, wfnrm
+            complex(kind=8) :: hlfdt, teng
+
+            rmax = dsqrt(xmax*xmax + ymax*ymax)
+            dx = (xmax - xmin)/(nx - one)
+            dy = (ymax - ymin)/(ny - one)
+            dtim = totime/(ntim-one)
+
+            tau = twpi/omega
+            plstr = pi/(two*nstrt*tau)
+            tcw = nstrt*tau
+            tof = ncw*tau + tcw
+            tff = tof + noff*tau
+            plend = pi/(2.0d0*(tff-tof))
+
+            allocate(kmtx(nx, nx), kmty(ny, ny))
+            allocate(ztmtx(nx, nx), ztmty(ny, ny))
+            allocate(kex(nx), key(ny))
+
+            call Kinetic(dx, nx, kmtx)
+            call CALL_DSYEV(kmtx, nx, kex)
+            ztmtx = kmtx
+
+            call Kinetic(dy, ny, kmty)
+            call CALL_DSYEV(kmty, ny, key)
+            ztmty = kmty
+            deallocate(kmtx, kmty)
+            allocate(tdiag(n2d), vx(n2d), vcap(n2d), frce(n2d), cofi(n2d))
+            vx = zero; vcap = zero; tdiag = zero; frce = zero
+            cofi = (zero, zero)
+            nxy = 0
+            open(101,file=flwfnc)
+            do ix = 1, nx
+                x = xmin + (ix-one)*dx
+                do iy = 1, ny
+                    y = ymin + (iy-one)*dy
+                    rvl = dsqrt(x*x + y*y)
+                    nxy = nxy + 1
+                    tdiag(nxy) = kex(ix) + key(iy)
+                    vx(nxy) = poten(natm, cord, x, y)
+                    frce(nxy) = dpotn(natm, cord, x, y)
+                    cofi(nxy) = psi0(nxy)
+                    vcap(nxy) = zero
+                    if ( rvl > (rmax - 5.000d+00) ) &
+                            vcap(nxy) = lmda*(rvl - (rmax - 5.00D+00))**2.0d0
+                    write(101,*) x, y, psi0(nxy)
+                enddo
+                write(101,*)
+            enddo
+            close(101)
+
+            deallocate(kex, key)
+            allocate(vxexp(n2d), coff(n2d), cofp(n2d))
+            allocate(cfx1(nx), cfx2(nx), cfy1(ny), cfy2(ny))
+            allocate(tmcof(n2d, ntim/nstep), tmptn(n2d, ntim/nstep))
+
+            hlfdt = half*dtim
+            icof = 0
+            open(11,file=fleng)
+            do itim = 1, ntim
+                time = (itim - one)*dtim
+                epls = epsln
+                tim2 = time - tof
+                if(time <= tcw) epls = epls*dsin(plstr*time)**2.0D+00
+                if(time >= tof) epls = epls*dcos(plend*tim2)**2.0D+00
+                if(time >= tff) epls = zero
+
+                nxy = 0
+                do ix = 1, nx
+                    x = xmin + (ix-one)*dx
+                    xtim = x*dcos(omega*time)
+                    do iy = 1, ny
+                        y = ymin + (iy-one)*dy
+                        ytim = y*dsin(omega*time)
+                        nxy = nxy + 1
+                        vxexp(nxy) = cdexp(-io*hlfdt*(vx(nxy) + (xtim+ytim)*epls))
+                        coff(nxy) = vxexp(nxy)*cofi(nxy)
+                    enddo
+                enddo
+
+                do iy = 1, ny
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+                    call zgemm ('T', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+                    do ix = 1, nx
+                        cofi(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+                enddo
+
+                 nxy = 0
+                do ix = 1, nx
+
+                    do iy = 1, ny
+                        cfy1(iy) = cofi(nx*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('T', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+
+                enddo
+
+                cofi = (zero, zero)
+                do i2d = 1, n2d
+                    cofi(i2d) = cdexp(-io*tdiag(i2d)*dtim)*coff(i2d)
+                enddo
+
+                 nxy = 0
+                do ix = 1, nx
+                    do iy = 1, ny
+                        cfy1(iy) = cofi(nx*(ix-1) + iy)
+                    enddo
+
+                    call zgemm ('N', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+                enddo
+
+                do iy = 1, ny
+                    cfx1 = (zero, zero)
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+
+                    cfx2 = (zero, zero)
+                    call zgemm ('N', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+
+                    do ix = 1, nx
+                        cofi(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+                enddo
+
+                coff = (zero, zero)
+                do i2d = 1, n2d
+                    coff(i2d) = dexp(-vcap(i2d)*dtim)*vxexp(i2d)*cofi(i2d)
+                enddo
+
+                cofi = (zero, zero); cofi = coff
+
+                if ( mod(itim ,nstep) == 0 ) then
+                    icof = icof + 1
+                    do i2d = 1, n2d
+                        tmcof(i2d, icof) = cdabs(conjg(cofi(i2d))*cofi(i2d))
+                        tmptn(i2d, icof) = vx(i2d)
+                    enddo
+                endif
+
+                cofp = (zero, zero)
+                do iy = 1, ny
+
+                    cfx1 = (zero, zero)
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+
+                    cfx2 = (zero, zero)
+                    call zgemm ('T', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+
+                    do ix = 1, nx
+                        cofp(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+
+                enddo
+
+                coff = (zero, zero); nxy = 0
+                do ix = 1, nx
+
+                    cfy1 = (zero, zero)
+                    do iy = 1, ny
+                        cfy1(iy) = cofp(nx*(ix-1) + iy)
+                    enddo
+
+                    cfy2 = (zero, zero)
+                    call zgemm ('T', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+
+                enddo
+
+                cofp = (zero, zero)
+                do i2d = 1, n2d
+                    cofp(i2d) = tdiag(i2d)*coff(i2d)
+                enddo
+
+                coff = (zero, zero); nxy = 0
+                do ix = 1, nx
+
+                    cfy1 = (zero, zero)
+                    do iy = 1, ny
+                        cfy1(iy) = cofp(nx*(ix-1) + iy)
+                    enddo
+
+                    cfy2 = (zero, zero)
+                    call zgemm ('N', 'N', ny, 1, ny, aval, ztmty, ny, &
+                            cfy1, ny, bval, cfy2, ny )
+
+                    do iy = 1, ny
+                        nxy = nxy + 1
+                        coff(nxy) = cfy2(iy)
+                    enddo
+
+                enddo
+
+                cofp = (zero, zero)
+                do iy = 1, ny
+
+                    cfx1 = (zero, zero)
+                    do ix = 1, nx
+                        cfx1(ix) = coff(ny*(ix-1) + iy)
+                    enddo
+
+                    cfx2 = (zero, zero)
+                    call zgemm ('N', 'N', nx, 1, nx, aval, ztmtx, nx, &
+                            cfx1, nx, bval, cfx2, nx )
+
+                    do ix = 1, nx
+                        cofp(ny*(ix-1) + iy) = cfx2(ix)
+                    enddo
+
+                enddo
+
+                teng = (zero, zero); wfnrm = zero; indpl = (zero, zero)
+                do i2d = 1, n2d
+                    teng = teng + conjg(cofi(i2d))*cofp(i2d) + &
+                            conjg(cofi(i2d))*(vx(i2d)-io*vcap(i2d))*cofi(i2d)
+                    wfnrm = wfnrm  + cdabs(conjg(cofi(i2d))*cofi(i2d))
+                    indpl = indpl + conjg(cofi(i2d))*(frce(i2d) + (epls*( &
+                            dsin(omega*time) + dcos(omega*time))))*cofi(i2d)
+                enddo
+
+                write(11,*) time, epls*dcos(omega*time), epls*dsin(omega*time), &
+                        real(teng), aimag(teng), wfnrm, real(indpl)
+
+            enddo
+            close(11)
+
+            open(12,file=fltden)
+            nxy = 0
+            do ix = 1, nx
+                x = xmin + (ix-one)*dx
+                do iy = 1, ny
+                    y = ymin + (iy-one)*dy
+                    nxy = nxy + 1
+                    write(12,'(*(f12.7))') x, y, &
+                            (tmcof(nxy,itim), itim=1,ntim/nstep)
+                enddo
+                write(12,*)
+            enddo
+            close(12)
+
+            open(12,file=fltpot)
+            nxy = 0
+            do ix = 1, nx
+                x = xmin + (ix-one)*dx
+                do iy = 1, ny
+                    y = ymin + (iy-one)*dy
+                    nxy = nxy + 1
+                    write(12,'(*(f12.7))') x, y, &
+                            (tmptn(nxy,itim), itim=1,ntim/nstep)
+                enddo
+                write(12,*)
+            enddo
+            close(12)
+
+            deallocate(ztmtx, ztmty, cofi, coff, cofp, cfx1, cfx2, cfy1, cfy2)
+            deallocate(tdiag, vx, vxexp, vcap, frce, tmcof, tmptn)
+
+        end
 end module time_prop_Trotter
 
 module time_prop_RK4
