@@ -1,5 +1,3 @@
-! Code for imaginary time-propagation for evaluating eigen-values and
-! eigen-states of one-dimensional Fourier grid Hamiltonian
 program onedim_frgrd_imagtim_prop
     use numconst
     use image_time_prop
@@ -78,4 +76,3 @@ subroutine OOP_vector_operations_example
     call matrix_operation_check(nmat, nmat, amat, nmat, nmat, bmat)
     deallocate(amat, bmat)
 end subroutine OOP_vector_operations_example
-

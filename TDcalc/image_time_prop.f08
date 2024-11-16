@@ -16,12 +16,12 @@ end
 
 module numconst
     implicit none
-
     real(kind=8), parameter :: zero = 0.000000d0, one = 1.00000d0
     real(kind=8), parameter :: half = 0.500000d0, two = 2.00000d0
     real(kind=8), parameter :: PI = 3.1415926535897932D+00, twpi = two*pi
     complex(kind=8), parameter :: io = (0.000000d0, 1.000000d0)
-
+    complex(kind=8), parameter :: aval = (one, zero)
+    complex(kind=8), parameter :: bval = (zero, zero)
 end
 
 function pot(x)
@@ -925,7 +925,7 @@ module time_prop_Trotter
         subroutine tprop_KH_dvr2d_cart_ ( xmin, xmax, ymin, ymax, nx, ny, n2d, natm, cord,      &
                 epsln, omega, phase, lmda, totime, ntim, nstrt, ncw, noff, noptc,      &
                 nstep, psi0, flwfnc, fleng, fltden, fltpot )
-            use input
+            use numconst
             implicit none
 
             real(kind=8), intent(in) :: xmin, xmax, ymin, ymax, lmda
@@ -1206,19 +1206,19 @@ module time_prop_Trotter
 
         end
 
-        subroutine tprop_dpl_dvr2d_cart_ ( xmin, xmax, ymin, ymax, nx, ny, n2d, natm, cord, &
+    subroutine tprop_dpl_dvr2d_cart_ ( xmin, xmax, ymin, ymax, nx, ny, n2d, natm, cord, &
                 epsln, omega, phase, lmda, totime, ntim, nstrt, ncw, noff, noptc,      &
                 nstep, psi0, flwfnc, fleng, fltden, fltpot )
-            use input
-            implicit none
+        use numconst
+        implicit none
 
-            real(kind=8), intent(in) :: xmin, xmax, ymin, ymax
-            real(kind=8), intent(in) :: epsln, omega, phase
-            real(kind=8), intent(in) :: lmda, totime
-            real(kind=8), intent(in) :: psi0(n2d), cord(natm,2)
-            integer(kind=4), intent(in) :: nx, ny, n2d, ntim, nstep, natm
-            integer(kind=4), intent(in) :: nstrt, ncw, noff, noptc
-            character(len=80), intent(in) :: flwfnc, fleng, fltden, fltpot
+        real(kind=8), intent(in) :: xmin, xmax, ymin, ymax
+        real(kind=8), intent(in) :: epsln, omega, phase
+        real(kind=8), intent(in) :: lmda, totime
+        real(kind=8), intent(in) :: psi0(n2d), cord(natm,2)
+        integer(kind=4), intent(in) :: nx, ny, n2d, ntim, nstep, natm
+        integer(kind=4), intent(in) :: nstrt, ncw, noff, noptc
+        character(len=80), intent(in) :: flwfnc, fleng, fltden, fltpot
 
             real(kind=8), allocatable :: kmtx(:,:), kmty(:,:), kex(:), key(:)
             real(kind=8), allocatable :: vx(:), vcap(:), frce(:), tdiag(:)
@@ -1511,7 +1511,6 @@ module time_prop_Trotter
 
             deallocate(ztmtx, ztmty, cofi, coff, cofp, cfx1, cfx2, cfy1, cfy2)
             deallocate(tdiag, vx, vxexp, vcap, frce, tmcof, tmptn)
-
         end
 end module time_prop_Trotter
 

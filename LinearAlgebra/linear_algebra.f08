@@ -696,7 +696,7 @@ module MatrixOperations
         lwork = max(1,this%rows*nvariables)
         
     allocate(ipiv(this%rows), work(lwork))
-        call dsysv ( uplo, this%rows, nvariables, this%real_elements, lda, ipiv, bmat, ldb, work, lwork, info )
+        call dsysv (uplo, this%rows, nvariables, this%real_elements, lda, ipiv, bmat, ldb, work, lwork, info)
 
         if (info /= 0) then
             print *, "Error: Failed to solve linear equation for real symmetic Matrix"
